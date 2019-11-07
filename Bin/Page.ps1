@@ -7,7 +7,9 @@ Function New-BootStrapModal {
     [String]$Id
     )
 
-    div -Class "modal fade" -id $Id -Attributes @{tabindex="-1";}
+    div -Class "modal fade" -id $Id -Attributes @{tabindex="-1";} -Content {
+
+    }
 }
 
 <#
@@ -62,28 +64,93 @@ $HTML = html {
             Foreach($AgendaFile in $AllAgendaFiles){
                 $Hash = @{}
                 
-                $Naming = $AgendaFile.Name.Split("-")
+                $Naming = $AgendaFile.BaseName.Split("-")
+                $Hash.BaseName = $AgendaFile.BaseName
                 $Hash.Date = $Naming[1]
                 $Hash.Type = $Naming[2]
                 $Hash.Title = $Naming[3].Replace("_"," ")
-                $Hash.DetailsUrl = "Details/" + $($AgendaFile.Name.Replace(".json",".html"))
+                $Hash.DetailsUrl = $($AgendaFile.Name.Replace(".json",".html"))
+                $Hash.DetailsFilePath = $($AgendaFile.Name.Replace(".json",".html"))
                 $Link = $null
                 $Link = a -href $Hash.DetailsUrl -Content {
                     button -Content {
                         "Details"
                     } -Class "btn btn-outline-primary"
-                } -Target _blank 
+                } -Target _self 
 
                 $Hash.Link = $Link
                 $jsondata = gc $AgendaFile.FullName -raw | convertfrom-json
-                $Hash.TalkDetails = $jsondata
-                $RecordingLink = a -href "$($jsondata.recording)" -Content {
-                    button -Content {
-                        "Recording"
-                    } -Class "btn btn-outline-primary"
-                } -Target _blank
+                $Hash.TalkDetails_raw = $jsondata
                 
-                $Hash.Video = $RecordingLink
+                foreach($talk in $hash.TalkDetails_raw){
+                    if($talk.Twitter -ne "" -and $talk.Twitter -ne $null){
+                        $twitterLink = $null
+                        $TwitterLink = a -href $talk.Twitter  -Content {
+                            button -Content {
+                                "Twitter"
+                            } -Class "btn btn-outline-primary"
+                        } -Target _blank 
+
+                        $Talk.Twitter = $twitterLink
+                    }else{
+                        $twitterLink = $null
+                        $TwitterLink = button -Content {
+                                "N/A"
+                            } -Class "btn btn-outline-primary"
+                       
+
+                        $Talk.Twitter = $twitterLink
+                    }
+
+                    if($talk.Website -ne "" -and $talk.Website -ne $null){
+                        $Websitelink = $null
+                        $Websitelink = a -href $Talk.website  -Content {
+                            button -Content {
+                                "website"
+                            } -Class "btn btn-outline-primary"
+                        } -Target _blank 
+
+                        $Talk.Website = $Websitelink
+                    }else{
+                        $Websitelink = $null
+                        $Websitelink = button -Content {
+                                "N/A"
+                            } -Class "btn btn-outline-primary"
+                        
+
+                        $Talk.Website = $Websitelink
+                    }
+
+                    if($talk.Recording -ne "" -and $talk.Recording -ne $null){
+                        $RecordingLink = $null
+                        $RecordingLink = a -href $talk.recording  -Content {
+                            button -Content {
+                                "Recording"
+                            } -Class "btn btn-outline-primary"
+                        } -Target _blank 
+
+                        $Talk.Recording = $RecordingLink
+
+                        
+                        
+                        $Hash.Video = $RecordingLink
+
+
+                    }else{
+                        $RecordingLink = $null
+                        $RecordingLink =  button -Content {
+                                "N/A"
+                            } -Class "btn btn-outline-primary"
+                       
+
+                        $Talk.Recording = $RecordingLink
+                        $Hash.Video = $RecordingLink
+                    }
+                    
+
+                }
+
+                
                 $AllObjects += New-Object -TypeName psobject -Property $Hash
                 
                 
@@ -101,25 +168,30 @@ $HTML = html {
                 $DetailPage = html {
                     include headpart
                     body {
-                        if($meetup.Type -eq 'Lightning'){
+                        div -Class "container" {
 
-                            h3 -Content {
-                                "{0} - {1}" -f $meetup.Date,$meetup.Type,$meetup.Title
-                            }
+                            include -Name TopPage
 
-                            ConvertTo-PSHTMLTable -Object $meetup.TalkDetails -Properties Id,Title,Abstract,PresenterName,Twitter,Website,Recording -TableClass "table" -TheadClass "thead-dark"
-                        }else{
-                            h3 -Content {
-                                "{0} - {1}" -f $meetup.Date,$meetup.Type,$meetup.Title
+                            if($meetup.Type -eq 'Lightning'){
+    
+                                h3 -Content {
+                                    "{0} - {1}" -f $meetup.Date,$meetup.Type,$meetup.Title
+                                }
+    
+                                ConvertTo-PSHTMLTable -Object $meetup.TalkDetails_raw -Properties Id,Title,Abstract,PresenterName,Twitter,Website,Recording -TableClass "table" -TheadClass "thead-dark"
+                            }else{
+                                h3 -Content {
+                                    "{0} - {1}" -f $meetup.Date,$meetup.Type,$meetup.Title
+                                }
+                                ConvertTo-PSHTMLTable -Object $meetup.TalkDetails_raw -Properties Id,Title,Abstract,PresenterName,Twitter,Website,Recording -TableClass "table" -TheadClass "thead-dark"
                             }
-                            ConvertTo-PSHTMLTable -Object $meetup.TalkDetails -Properties Id,Title,Abstract,PresenterName,Twitter,Website,Recording -TableClass "table" -TheadClass "thead-dark"
                         }
                     }
                     include BottomPage
                 }
                 $Current = Get-Location
                 $Detailsfolder = $Current.Path.Replace('Bin','Agenda')
-                $FilePath = Join-Path $Detailsfolder -ChildPath $meetup.DetailsUrl
+                $FilePath = Join-Path "..\" -ChildPath $meetup.DetailsFilePath
                 $DetailPage | out-File -Filepath $FilePath -Encoding utf8
             }
 
