@@ -55,7 +55,7 @@ $HTML = html {
                 "Events"
             }
             
-            $AllAgendaFiles = gci ../Agenda/ -File | sort Name -Descending
+            $AllAgendaFiles = gci ../Agenda/ -file | ? {$_.Name -notlike "*about.json" -and $_.Name -notlike "*Team.json"}
 
 
 
